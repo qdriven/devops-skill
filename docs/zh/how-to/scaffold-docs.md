@@ -15,4 +15,4 @@
 2. 改 `package.json` 的 `name`，以及 `docmd.config.js` 的 `title` / `url` / 页脚文案。
 3. 在 `docs/zh/` 与 `docs/en/` 按 tutorials / how-to / explanation / reference 写内容。
 4. `npm install && npm run dev` 预览；`npm run build && npm run validate` 检查。
-5. 用附带的 `.github/workflows/deploy-docs.yml`，仓库 Pages Source 选 **GitHub Actions**。
+5. 用附带的 `.github/workflows/deploy-docs.yml`（Node 24：`checkout@v6` / `setup-node@v6` / `upload-pages-artifact@v5` / `deploy-pages@v5`），仓库 Pages Source 选 **GitHub Actions**。定稿见 `docmd/SKILL.md`。
