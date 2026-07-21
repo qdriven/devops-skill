@@ -1,9 +1,10 @@
 ---
 name: git-pr
 description: |
-  GitHub Pull Request 工作流 Skill：推送分支、创建/更新 PR、关联 Issue、返回 PR URL。
-  TRIGGER: When user asks to "create PR", "开 PR", "pull request", "提交 PR", "push and open PR",
-  or after git-workflow/local-workflow finish when they explicitly want a PR.
+  GitHub Pull Request 工作流 Skill：推送分支、创建/更新 PR、合并 PR、关联 Issue、返回 PR URL。
+  Prefer scripts/orchestrate.py (create|merge|status) over ad-hoc gh commands.
+  TRIGGER: When user asks to "create PR", "开 PR", "pull request", "提交 PR", "merge PR", "合并 PR",
+  "push and open PR", or after git-workflow/local-workflow finish when they explicitly want a PR.
   Do not use for Issue lifecycle (git-workflow) or raw one-off gh snippets (github-cli).
 compatibility: Requires git, a GitHub remote, and authenticated GitHub CLI gh.
 metadata:
@@ -19,6 +20,7 @@ metadata:
   triggers:
     - pattern: "(create|open|submit)\\s*(a\\s+)?(pr|pull\\s*request)"
     - pattern: "(开|创建|提交)\\s*PR"
+    - pattern: "(merge|合并)\\s*(the\\s+)?(pr|pull\\s*request|PR)"
     - pattern: "pull\\s*request|合并请求"
     - pattern: "push\\s+(and|&)\\s*(open\\s+)?pr"
   tags:
@@ -30,91 +32,113 @@ metadata:
 
 # Git PR
 
-基于 [github-cli-skill](../github-cli-skill/SKILL.md) 的 **Pull Request 工作流**：推送当前（或指定）分支并创建/更新 PR。
+基于 [github-cli-skill](../github-cli-skill/SKILL.md) 的 **Pull Request 工作流**：创建 / 查询 / 合并 PR。
+
+**推荐用脚本，而不是手写一长串 `gh`。** 与 `git-workflow` 一样，流程入口是 `scripts/orchestrate.py`。
 
 ## 选择规则
 
 | 场景 | 用哪个 |
 |------|--------|
-| 用户明确要求开 PR / 推送并创建 PR | **本 Skill（git-pr）** |
+| 用户明确要求开 PR / 合并 PR | **本 Skill（git-pr）** |
 | Issue 全生命周期（init → 实现 → close） | [git-workflow](../git-workflow/SKILL.md) |
 | 本地追踪、不要 GitHub | [local-workflow](../local-workflow/SKILL.md) |
 | 只要单条 `gh` 命令速查 | [github-cli-skill](../github-cli-skill/SKILL.md) |
 | 需要隔离目录再改代码开 PR | 先 [git-worktree](../git-worktree/SKILL.md)，再本 Skill |
 
-**与 git-workflow 的关系**：正交且可选。`git-workflow finish` **默认不开 PR**；用户说「开 PR / 走 git-pr」时再触发本 Skill。也可在未跑 git-workflow 的情况下单独使用。
+**与 git-workflow 的关系**：正交且可选。`git-workflow finish` **默认不开/不合并 PR**；用户说「开 PR / 合并 PR / 走 git-pr」时再触发本 Skill。
 
-## 工作流步骤
+## 脚本入口（首选）
+
+路径（按安装位置择一）：
+
+```bash
+python3 .agents/skills/git-pr/scripts/orchestrate.py <command> ...
+# 或系统安装：
+python3 ~/.claude/skills/git-pr/scripts/orchestrate.py <command> ...
+```
+
+| 命令 | 作用 |
+|------|------|
+| `create --title "..." --body "..."` | `git push -u` + `gh pr create`（已有 PR 则返回 URL） |
+| `status [--pr N]` | 查看 mergeable / checks |
+| `merge [--pr N] [--method squash\|merge\|rebase]` | 合并 PR（默认 squash，默认删远端头部分支） |
+
+### create
+
+```bash
+python3 ~/.claude/skills/git-pr/scripts/orchestrate.py create \
+  --title "Add feature X" \
+  --body "$(cat <<'EOF'
+## Summary
+- Why / what
+
+## Test plan
+- [ ] steps
+
+EOF
+)" \
+  --base main
+```
+
+可选：`--draft`、`--repo owner/name`。状态写入 `.git-pr.state.json`。
+
+### status
+
+```bash
+python3 ~/.claude/skills/git-pr/scripts/orchestrate.py status
+python3 ~/.claude/skills/git-pr/scripts/orchestrate.py status --pr 2
+```
+
+### merge
+
+**仅在用户明确要求合并时执行。** 先 `status` 确认 `MERGEABLE` / 无冲突。
+
+```bash
+# 默认：squash + 删除远端头部分支
+python3 ~/.claude/skills/git-pr/scripts/orchestrate.py merge --pr 2
+
+# 保留分支 / 换合并方式
+python3 ~/.claude/skills/git-pr/scripts/orchestrate.py merge --pr 2 --method merge --keep-branch
+```
+
+护栏：
+
+- 拒绝从 `main`/`master` 上 `create`
+- `merge` 前检查 PR 为 `OPEN`，且非 `CONFLICTING`
+- **不** force push；不改 git config；不默认 `--admin`（需显式传）
+
+## 工作流
 
 ```mermaid
 flowchart TD
-    BEGIN([BEGIN]) --> STATUS[收集 status / diff / log / 远程跟踪]
-    STATUS --> BASE[确认 base 分支通常 main/master]
-    BASE --> PUSH[git push -u origin HEAD]
-    PUSH --> EXIST{已有 PR?}
-    EXIST -->|是| UPDATE[可选 gh pr edit / 仅返回 URL]
-    EXIST -->|否| CREATE[gh pr create]
+    BEGIN([BEGIN]) --> CREATE[orchestrate.py create]
     CREATE --> URL[返回 PR URL]
-    UPDATE --> URL
-    URL --> END([END])
+    URL --> WAIT[评审 / CI]
+    WAIT --> ASK{用户要合并?}
+    ASK -->|否| END1([END])
+    ASK -->|是| ST[orchestrate.py status]
+    ST --> OK{MERGEABLE?}
+    OK -->|否| FIX[解决冲突/CI]
+    FIX --> ST
+    OK -->|是| MG[orchestrate.py merge]
+    MG --> END2([END])
 ```
-
-### 步骤说明
-
-1. **STATUS** — 并行收集（在目标仓库根目录）：
-   - `git status -sb`
-   - `git diff` 与 `git diff --staged`（确认没有未提交必改内容；有则先问用户是否 commit）
-   - `git rev-parse --abbrev-ref HEAD`、是否跟踪 remote、`git status -sb` 是否 ahead/behind
-   - `git log --oneline $(git merge-base HEAD <base>)..HEAD` 与 `git diff <base>...HEAD`
-2. **BASE** — 默认 base 为 `main`，若不存在则试 `master`；可用 `--base` 覆盖。
-3. **PUSH** — `git push -u origin HEAD`（需要网络与写权限）。**不要** force push 到 main/master。
-4. **CREATE / UPDATE**
-   - 已有 PR：`gh pr view --json url -q .url`，除非用户要求改标题/正文，否则直接返回 URL。
-   - 否则：`gh pr create`（见下方模板）。若分支名形如 `42-feature`，在 Summary 写 `Closes #42` / `Refs #42`（Issue 已关则用 Refs）。
-5. **URL** — 把 PR URL 明确返回给用户。
-
-## PR Body 模板
-
-```bash
-gh pr create --base main --title "简洁标题" --body "$(cat <<'EOF'
-## Summary
-- <1-3 条：为什么改 / 改了什么>
-
-## Test plan
-- [ ] <验证步骤>
-
-EOF
-)"
-```
-
-可选：`--draft`、`--reviewer`、`--label`、关联 Issue 的 `Closes #N`。
-
-## 快速参考
-
-| 操作 | 命令 |
-|------|------|
-| 推送当前分支 | `git push -u origin HEAD` |
-| 创建 PR | `gh pr create --base main --title "..." --body "..."` |
-| 查看当前分支 PR | `gh pr view --web` / `gh pr view --json url -q .url` |
-| 列出 PR | `gh pr list` |
-| 检查 CI | `gh pr checks` |
 
 ## Agent 行为约定
 
-1. 用户只说「执行任务」且未提 PR → **不要**自动开 PR；走 git-workflow / local-workflow 即可。
-2. 用户说「开 PR」「走 git-pr」「提交 PR」→ **读本 Skill 并执行**。
-3. 有未提交改动时先说明，征得同意再 commit（遵循用户的 commit 规则），再 push/create。
-4. 永远不更新 git config；不 force push main/master；不跳过 hooks。
-5. 完成后必须给出可点击的 PR URL。
+1. 开 PR / 合并 PR → **优先跑 `orchestrate.py`**，不要只贴一串手写 `gh`。
+2. 用户未说「合并」→ 只 create/status，**不要**自动 merge。
+3. 有未提交改动时先征得同意再 commit，再 create。
+4. 完成后给出可点击的 PR URL（merge 后说明已 MERGED）。
 
 ## 与 git-workflow 的衔接（可选）
 
 ```text
 git-workflow init → (worktree?) → implement → finish
-        └─ 用户要求开 PR 时 → git-pr（push + gh pr create，Refs/Closes Issue）
+        └─ 开 PR → git-pr create
+        └─ 合并 PR → git-pr merge（需用户明确要求）
 ```
-
-在 `finish` 的 Result 里可记一句「PR：\<url\>」；本 Skill 不负责关 Issue。
 
 ## 相关
 
