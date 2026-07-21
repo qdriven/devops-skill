@@ -40,12 +40,14 @@ npm run validate # 检查内链
 
 ## GitHub Pages
 
+仓库已附带 `.github/workflows/deploy-docs.yml`（**Node 24** action majors：`checkout@v6`、`setup-node@v6`、`upload-pages-artifact@v5`、`deploy-pages@v5`）。定稿说明见 [`../SKILL.md`](../SKILL.md)。
+
 ```bash
-# 可选：用官方生成器覆盖 workflow
+# 可选：官方生成器；若输出仍是 @v4，请用本模版 workflow 覆盖
 npx @docmd/core deploy --github-pages
 ```
 
-仓库已附带 `.github/workflows/deploy-docs.yml`。在 GitHub 仓库 Settings → Pages → Source 选择 **GitHub Actions**。
+在 GitHub 仓库 Settings → Pages → Source 选择 **GitHub Actions**。
 
 把 `docmd.config.js` 里的 `url` 改成你的 Pages 地址，例如：
 

@@ -6,7 +6,7 @@ description: |
   Use when the user asks to create a docs site, set up docmd, copy the Diátaxis template,
   or explain how devops-skill's own docs site was built.
   TRIGGER: docmd, Diátaxis, docs site, documentation site, doc-templates, GitHub Pages docs.
-compatibility: Requires Node.js >= 18 and npm; optional GitHub CLI for Pages setup.
+compatibility: Requires Node.js >= 18 and npm locally; CI uses Node.js 24. Optional GitHub CLI for Pages setup.
 metadata:
   type: skill
   supported_agents:
@@ -55,7 +55,76 @@ metadata:
 | 双语 | `i18n`：`default: 'zh'`，`en` 走 `/en/`；语言切换在侧栏 options menu |
 | 目录 | Diátaxis 四类：`tutorials/`、`how-to/`、`explanation/`、`reference/` + Landing |
 | 页脚 | `footer.style: 'complete'` + `assets/footer.css`（修复 sky 主题页脚裁切） |
-| 部署 | `.github/workflows/deploy-docs.yml` → GitHub Pages（Actions） |
+| 部署 | `.github/workflows/deploy-docs.yml` → GitHub Pages（Actions，**Node 24 action majors**） |
+
+## 定稿：GitHub Pages workflow（Node 24）
+
+仓库根与模版共用同一份 workflow。**不要**再写 `actions/*@v4`（Node 20 runtime 已弃用）。定稿版本：
+
+| Action | 版本 | 说明 |
+|--------|------|------|
+| `actions/checkout` | `v6` | Node 24 |
+| `actions/setup-node` | `v6` | Node 24；`node-version: "24"` |
+| `actions/upload-pages-artifact` | `v5` | 内含 Node 24 系 upload-artifact |
+| `actions/deploy-pages` | `v5` | Node 24 |
+
+完整文件见 [template/.github/workflows/deploy-docs.yml](template/.github/workflows/deploy-docs.yml)（与仓库根 `.github/workflows/deploy-docs.yml` 同构）：
+
+```yaml
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build docs site
+        run: npx docmd build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ./site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+```
+
+参考：[Deprecation of Node 20 on GitHub Actions runners](https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/)。
 
 ## 用模版新建文档站
 
@@ -103,7 +172,8 @@ flowchart TD
    ```
 
 5. **GitHub Pages**
-   - 保留或生成 `.github/workflows/deploy-docs.yml`（可用 `npx @docmd/core deploy --github-pages`）
+   - 使用模版内定稿 `.github/workflows/deploy-docs.yml`（Node 24 action majors；见上一节）
+   - 若跑 `npx @docmd/core deploy --github-pages`，生成后核对是否仍为 `@v4`；若是，用定稿版本覆盖
    - 仓库 Settings → Pages → Source 选 **GitHub Actions**
    - 推送到 `main` 触发部署
 

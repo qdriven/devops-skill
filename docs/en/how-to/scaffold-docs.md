@@ -15,4 +15,4 @@ Full steps and conventions: skill `docmd/SKILL.md` (template at `docmd/template/
 2. Change `package.json` `name`, and `docmd.config.js` `title` / `url` / footer copy.
 3. Write content under `docs/zh/` and `docs/en/` in tutorials / how-to / explanation / reference.
 4. `npm install && npm run dev` to preview; `npm run build && npm run validate` to check.
-5. Use the bundled `.github/workflows/deploy-docs.yml` and set Pages Source to **GitHub Actions**.
+5. Use the bundled `.github/workflows/deploy-docs.yml` (Node 24: `checkout@v6` / `setup-node@v6` / `upload-pages-artifact@v5` / `deploy-pages@v5`) and set Pages Source to **GitHub Actions**. Canonical copy: `docmd/SKILL.md`.

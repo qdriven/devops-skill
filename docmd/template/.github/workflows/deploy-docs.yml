@@ -1,5 +1,12 @@
 # GitHub Pages Deployment Workflow
 # https://docmd.io/deployment/github-pages
+#
+# Action majors target Node.js 24 (Node 20 runner runtime is deprecated):
+#   actions/checkout@v6
+#   actions/setup-node@v6
+#   actions/upload-pages-artifact@v5
+#   actions/deploy-pages@v5
+# Ref: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
 
 name: Deploy to GitHub Pages
 
@@ -23,12 +30,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "24"
           registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
@@ -38,7 +45,7 @@ jobs:
         run: npx docmd build
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: ./site
 
@@ -51,4 +58,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
