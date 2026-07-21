@@ -5,7 +5,7 @@
     Installs all dev-workflow related skills.
 
 .DESCRIPTION
-    Installs: github-cli-skill, gh-create-release, git-workflow, local-workflow
+    Installs: github-cli-skill, gh-create-release, git-workflow, git-worktree, local-workflow
 
 .PARAMETER System
     Install to system directories
@@ -18,6 +18,9 @@
 
 .PARAMETER Hooks
     Also install git hooks (git-workflow only)
+
+.NOTES
+    Always force-updates: refreshes canonical copies and replaces existing links/dirs.
 
 .EXAMPLE
     .\dev-workflow-install.ps1 -System
@@ -53,6 +56,7 @@ $Skills = @(
     "github-cli-skill"
     "gh-create-release"
     "git-workflow"
+    "git-worktree"
     "local-workflow"
 )
 
@@ -162,27 +166,32 @@ function Copy-ToCanonical {
 }
 
 function New-SkillLink {
-    param([string]$SkillName, [string]$SkillRoot, [string]$TargetDir)
+    param([string]$SkillName, [string]$TargetDir)
     $linkPath = Join-Path $TargetDir $SkillName
-
-    if ((Test-Path $linkPath) -or (Get-Item $linkPath -ErrorAction SilentlyContinue)) {
-        Write-Warning "  [SKIP] $SkillName already exists at $linkPath"
-        return $false
-    }
+    $action = "OK"
 
     $parentDir = Split-Path -Parent $linkPath
     if (-not (Test-Path $parentDir)) {
         New-Item -ItemType Directory -Path $parentDir -Force | Out-Null
     }
 
-    # Copy to canonical storage first, then symlink from there
-    Copy-ToCanonical -SourcePath $SkillRoot -Name $SkillName
+    if (Test-Path $linkPath) {
+        $item = Get-Item $linkPath -Force -ErrorAction SilentlyContinue
+        if ($item -and ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            $action = "UPDATE"
+        }
+        else {
+            $action = "REPLACE"
+        }
+        Remove-Item $linkPath -Recurse -Force
+    }
+
     $canonicalPath = Join-Path $CanonicalDir $SkillName
 
     if (Test-SymlinkCapability) {
         try {
             New-Item -ItemType SymbolicLink -Path $linkPath -Target $canonicalPath -Force | Out-Null
-            Write-Success "  [OK]   $SkillName -> $linkPath"
+            Write-Success "  [$action] $SkillName -> $linkPath"
             return $true
         }
         catch {
@@ -192,7 +201,7 @@ function New-SkillLink {
 
     try {
         New-Item -ItemType Junction -Path $linkPath -Target $canonicalPath -Force | Out-Null
-        Write-Success "  [OK]   $SkillName -> $linkPath (junction)"
+        Write-Success "  [$action] $SkillName -> $linkPath (junction)"
         return $true
     }
     catch {
@@ -212,6 +221,9 @@ function Install-Skill {
 
     Write-Info "Installing $SkillName..."
 
+    # Always refresh canonical copy first
+    Copy-ToCanonical -SourcePath $skillRoot -Name $SkillName
+
     if ($System) {
         $targetDirs = Get-SystemTargetDirs
     }
@@ -220,18 +232,14 @@ function Install-Skill {
     }
 
     $installed = 0
-    $skipped = 0
 
     foreach ($targetDir in $targetDirs) {
-        if (New-SkillLink -SkillName $SkillName -SkillRoot $skillRoot -TargetDir $targetDir) {
+        if (New-SkillLink -SkillName $SkillName -TargetDir $targetDir) {
             $installed++
-        }
-        else {
-            $skipped++
         }
     }
 
-    Write-Success "  Installed: $installed, Skipped: $skipped"
+    Write-Success "  Updated: $installed target(s)"
 }
 
 function Install-GitHooks {
@@ -255,13 +263,13 @@ function Install-GitHooks {
         $src = Join-Path $hooksDir $hook
         $dst = Join-Path $gitHooksDir $hook
         if (Test-Path $src) {
-            if ((Test-Path $dst) -and -not (Get-Item $dst -ErrorAction SilentlyContinue).LinkType) {
-                Write-Warning "  [SKIP] $dst already exists (not overwriting)"
+            $action = "OK"
+            if (Test-Path $dst) {
+                $action = "UPDATE"
+                Remove-Item $dst -Force
             }
-            else {
-                Copy-Item $src $dst -Force
-                Write-Success "  [OK]   $dst"
-            }
+            Copy-Item $src $dst -Force
+            Write-Success "  [$action] $dst"
         }
     }
 }

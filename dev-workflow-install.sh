@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Dev Workflow Combined Installer (macOS / Linux)
-# Installs all dev-workflow related skills: github-cli-skill, gh-create-release, git-workflow, local-workflow
+# Installs all dev-workflow related skills: github-cli-skill, gh-create-release, git-workflow, git-worktree, local-workflow
 #
 # Usage: ./dev-workflow-install.sh [--system | --project] [--agent <name>] [--hooks]
 #
@@ -10,6 +10,9 @@
 #   --agent <name>  Target specific agent (claude-code, kimi, codex, opencode, trae, trae-solo)
 #   --hooks         Also install git hooks (git-workflow only)
 #   -h, --help      Show this help message
+#
+# Behavior:
+#   Always force-updates: refreshes canonical copies and replaces existing links/dirs.
 #
 # Examples:
 #   ./dev-workflow-install.sh --system
@@ -31,6 +34,7 @@ SKILLS=(
     "github-cli-skill"
     "gh-create-release"
     "git-workflow"
+    "git-worktree"
     "local-workflow"
 )
 
@@ -53,6 +57,8 @@ Options:
   --agent <name>  Target specific agent (claude-code, kimi, codex, opencode, trae, trae-solo)
   --hooks         Also install git hooks (git-workflow only)
   -h, --help      Show this help message
+
+Always force-updates existing installs (canonical copy + links).
 
 Examples:
   ./dev-workflow-install.sh --system
@@ -222,21 +228,22 @@ copy_to_canonical() {
 
 install_skill_to_dir() {
     local skill_name="$1"
-    local skill_root="$2"
-    local target_dir="$3"
+    local target_dir="$2"
     local link_path="$target_dir/$skill_name"
+    local action="OK"
 
     mkdir -p "$target_dir"
 
-    if [ -e "$link_path" ] || [ -L "$link_path" ]; then
-        echo -e "${YELLOW}  [SKIP]${NC} $skill_name already exists at $link_path"
-        return 1
+    if [ -L "$link_path" ]; then
+        action="UPDATE"
+        rm "$link_path"
+    elif [ -e "$link_path" ]; then
+        action="REPLACE"
+        rm -rf "$link_path"
     fi
 
-    # Copy to canonical storage first, then symlink from there
-    copy_to_canonical "$skill_root" "$skill_name"
-    ln -s "$CANONICAL_DIR/$skill_name" "$link_path"
-    echo -e "${GREEN}  [OK]${NC}   $skill_name -> $link_path"
+    ln -sfn "$CANONICAL_DIR/$skill_name" "$link_path"
+    echo -e "${GREEN}  [${action}]${NC} $skill_name -> $link_path"
     return 0
 }
 
@@ -251,6 +258,9 @@ install_skill() {
 
     echo -e "${BLUE}Installing $skill_name...${NC}"
 
+    # Always refresh canonical copy first
+    copy_to_canonical "$skill_root" "$skill_name"
+
     local target_dirs
     if [ "$INSTALL_MODE" = "system" ]; then
         target_dirs=($(get_system_target_dirs))
@@ -259,17 +269,14 @@ install_skill() {
     fi
 
     local installed=0
-    local skipped=0
 
     for target_dir in "${target_dirs[@]}"; do
-        if install_skill_to_dir "$skill_name" "$skill_root" "$target_dir"; then
+        if install_skill_to_dir "$skill_name" "$target_dir"; then
             ((installed++)) || true
-        else
-            ((skipped++)) || true
         fi
     done
 
-    echo -e "  ${GREEN}Installed: $installed, Skipped: $skipped${NC}"
+    echo -e "  ${GREEN}Updated: $installed target(s)${NC}"
 }
 
 install_git_hooks() {
@@ -291,13 +298,14 @@ install_git_hooks() {
         local src="$git_workflow_root/hooks/$hook"
         local dst=".git/hooks/$hook"
         if [ -f "$src" ]; then
-            if [ -e "$dst" ] && [ ! -L "$dst" ]; then
-                echo -e "${YELLOW}  [SKIP]${NC} $dst already exists (not overwriting)"
-            else
-                cp "$src" "$dst"
-                chmod +x "$dst"
-                echo -e "${GREEN}  [OK]${NC}   $dst"
+            local action="OK"
+            if [ -e "$dst" ] || [ -L "$dst" ]; then
+                action="UPDATE"
+                rm -f "$dst"
             fi
+            cp "$src" "$dst"
+            chmod +x "$dst"
+            echo -e "${GREEN}  [${action}]${NC} $dst"
         fi
     done
 }

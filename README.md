@@ -4,11 +4,22 @@
 
 源自我仓库 `fire-skills/skills/devops`，现已独立为 GitHub 仓库：[qdriven/devops-skill](https://github.com/qdriven/devops-skill)。
 
+文档站点（docmd + Diátaxis，中文 / English）：源码在 [`docs/zh/`](./docs/zh/)、[`docs/en/`](./docs/en/)，构建后发布到 GitHub Pages：https://qdriven.github.io/devops-skill/
+
+```bash
+npm install
+npm run docs:dev      # 本地预览（侧栏可切换中英文）
+npm run docs:build    # 输出到 site/
+```
+
+推送到 `main` 时由 [`.github/workflows/deploy-docs.yml`](./.github/workflows/deploy-docs.yml) 自动部署。仓库 Settings → Pages → Source 需选择 **GitHub Actions**。
+
 ## 技能列表
 
 | Skill | 说明 |
 |-------|------|
 | **git-workflow** | 基于 GitHub CLI 的任务工作流（创建 Issue body 主记录 → 计划/执行/检查 → 更新并关闭 Issue） |
+| **git-worktree** | 用 git worktree 做隔离/并行开发；可与 git-workflow、local-workflow 组合 |
 | **local-workflow** | 本地任务工作流（无需 GitHub，本地追踪记录） |
 | **github-cli-skill** | 简化版 GitHub CLI 工具（仓库创建、Issue 管理） |
 | **gh-create-release** | GitHub Release 创建工具 |
@@ -16,7 +27,7 @@
 
 ## 安装
 
-推荐使用本目录下的统一脚本：
+推荐使用本目录下的统一脚本（**默认强制更新**：刷新内容并替换已有链接/目录）：
 
 ```bash
 # macOS / Linux / WSL2 / Git Bash
@@ -27,7 +38,7 @@ bash skillsets/devops-skill/dev-workflow-install.sh --system --agent codex
 # Project 级（安装到当前项目 ./.agents/skills/）
 bash skillsets/devops-skill/dev-workflow-install.sh --project
 
-# 附带 git hooks
+# 附带 git hooks（已存在则覆盖）
 bash skillsets/devops-skill/dev-workflow-install.sh --system --hooks
 ```
 
@@ -89,6 +100,7 @@ bash skillsets/devops-skill/dev-workflow-install.sh --project --hooks --agent cl
 | 场景 | 推荐 Skill |
 | --- | --- |
 | 任务需要 GitHub Issue 生命周期 | `git-workflow` |
+| 隔离目录 / 并行分支 / 不弄脏主工作区 | `git-worktree`（常与上面两个 workflow 组合） |
 | 本地/离线/无需 GitHub 的任务追踪 | `local-workflow` |
 | 只需要 GitHub CLI 命令速查 | `github-cli-skill` |
 | 创建 GitHub Release | `gh-create-release` |

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Dev Workflow Symlink Installer (macOS / Linux)
-# Installs all dev-workflow skills via symlinks: github-cli-skill, gh-create-release, git-workflow, local-workflow, scanning-for-secrets
+# Installs all dev-workflow skills via symlinks: github-cli-skill, gh-create-release, git-workflow, git-worktree, local-workflow, scanning-for-secrets
 #
 # Usage: ./dev-workflow-symlink-install.sh [--system | --project] [--agent <name>]
 #
@@ -11,6 +11,9 @@
 #                     If omitted, installs to all supported agents.
 #   --hooks           Also install git hooks (git-workflow only, project mode only)
 #   -h, --help        Show this help message
+#
+# Behavior:
+#   Always force-updates: replaces existing symlinks or directories at the target path.
 #
 # Examples:
 #   ./dev-workflow-symlink-install.sh --system
@@ -29,6 +32,7 @@ SKILLS=(
     "github-cli-skill"
     "gh-create-release"
     "git-workflow"
+    "git-worktree"
     "local-workflow"
     "scanning-for-secrets"
 )
@@ -52,6 +56,8 @@ Options:
   --agent <name>    Target specific agent (claude-code, kimi, codex, opencode, trae, trae-solo)
   --hooks           Also install git hooks (git-workflow only)
   -h, --help        Show this help message
+
+Always force-updates existing installs (replaces symlinks and directories).
 
 Examples:
   ./dev-workflow-symlink-install.sh --system
@@ -139,6 +145,7 @@ install_skill_symlink() {
     local skill_source="$SCRIPT_DIR/$skill_name"
     local target_dir="$2"
     local link_path="$target_dir/$skill_name"
+    local action="OK"
 
     if [ ! -d "$skill_source" ]; then
         echo -e "${RED}  [ERROR]${NC} Skill source not found: $skill_source"
@@ -147,24 +154,23 @@ install_skill_symlink() {
 
     mkdir -p "$target_dir"
 
-    # Remove existing symlink or directory at target
     if [ -L "$link_path" ]; then
         local existing_target
         existing_target="$(readlink "$link_path")"
         if [ "$existing_target" = "$skill_source" ]; then
-            echo -e "${GREEN}  [OK]${NC}   $skill_name already linked -> $link_path"
-            return 0
+            # Already correct; still recreate so the install is idempotent/force-refresh
+            action="UPDATE"
         else
-            echo -e "${YELLOW}  [REPLACE]${NC} $skill_name was linked to $existing_target, updating..."
-            rm "$link_path"
+            action="REPLACE"
         fi
+        rm "$link_path"
     elif [ -e "$link_path" ]; then
-        echo -e "${YELLOW}  [SKIP]${NC} $link_path exists and is not a symlink (manual install?)"
-        return 1
+        action="REPLACE"
+        rm -rf "$link_path"
     fi
 
-    ln -s "$skill_source" "$link_path"
-    echo -e "${GREEN}  [OK]${NC}   $skill_name -> $link_path"
+    ln -sfn "$skill_source" "$link_path"
+    echo -e "${GREEN}  [${action}]${NC} $skill_name -> $link_path"
     return 0
 }
 
@@ -180,17 +186,14 @@ install_skill() {
     fi
 
     local installed=0
-    local skipped=0
 
     for target_dir in "${target_dirs[@]}"; do
         if install_skill_symlink "$skill_name" "$target_dir"; then
             ((installed++)) || true
-        else
-            ((skipped++)) || true
         fi
     done
 
-    echo -e "  ${GREEN}Installed: $installed, Skipped: $skipped${NC}"
+    echo -e "  ${GREEN}Updated: $installed target(s)${NC}"
 }
 
 install_git_hooks() {
@@ -212,13 +215,14 @@ install_git_hooks() {
         local src="$git_workflow_root/hooks/$hook"
         local dst=".git/hooks/$hook"
         if [ -f "$src" ]; then
-            if [ -e "$dst" ] && [ ! -L "$dst" ]; then
-                echo -e "${YELLOW}  [SKIP]${NC} $dst already exists (not overwriting)"
-            else
-                cp "$src" "$dst"
-                chmod +x "$dst"
-                echo -e "${GREEN}  [OK]${NC}   $dst"
+            local action="OK"
+            if [ -e "$dst" ] || [ -L "$dst" ]; then
+                action="UPDATE"
+                rm -f "$dst"
             fi
+            cp "$src" "$dst"
+            chmod +x "$dst"
+            echo -e "${GREEN}  [${action}]${NC} $dst"
         fi
     done
 }

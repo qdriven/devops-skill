@@ -40,6 +40,7 @@ metadata:
 - 用户要求本地、离线、不使用 GitHub、仅写本地 tracing 时，使用 `local-workflow`。
 - 如果用户只是说“执行任务”但没有说明是否要 GitHub Issue，先判断仓库是否有 GitHub remote 和 `gh auth status`；条件不满足时不要强行创建 Issue。
 - 不要为纯命令查询触发本 Skill；只需要 `gh` 命令速查时使用 `github-cli`。
+- 需要隔离工作目录 / 并行分支 / 不弄脏主工作区时，配合 [git-worktree](../git-worktree/SKILL.md)：Issue 追踪仍由本 Skill 负责，检出与目录隔离交给 worktree。
 
 ## 推荐控制方式：No-Hook
 
@@ -81,6 +82,7 @@ flowchart TD
 3. **IMPLEMENT** — Agent 执行任务
    - 根据任务描述执行代码修改
    - 运行测试并修复问题
+   - **可选隔离**：主工作区有未提交改动、或用户要求并行/隔离开发时，先按 [git-worktree](../git-worktree/SKILL.md) 建 linked worktree（分支名建议 `{issue}-{slug}`），在 worktree 目录内实现与提交；完成后 `git worktree remove`
 
 4. **FINISH** — 更新 Issue body 并关闭 Issue
    - 运行：`python3 .agents/skills/git-workflow/scripts/orchestrate.py finish --message "完成总结"`
@@ -288,3 +290,5 @@ Hook 会检测任务执行相关的 prompt（如"执行任务"、"execute task"�
 |------|------|
 | [references/workflow.md](references/workflow.md) | 工作流详细参考 |
 | [references/simple-workflow-runtime.md](references/simple-workflow-runtime.md) | 参考 Yorun 的最小 workflow skill set 方案 |
+| [git-worktree](../git-worktree/SKILL.md) | 用 worktree 隔离实现目录与分支 |
+| [github-cli-skill](../github-cli-skill/SKILL.md) | `gh` 命令助手 |

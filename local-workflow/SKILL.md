@@ -27,6 +27,8 @@ metadata:
 
 本地任务管理的工作流：通过本地文件系统追踪任务执行过程，无需 GitHub Issues。
 
+需要隔离工作目录或并行分支时，配合 [git-worktree](../git-worktree/SKILL.md)：本地 tracing 仍由本 Skill 负责，检出与目录隔离交给 worktree（在 worktree 内 init → 实现 → finish，结束后 `git worktree remove`）。
+
 ## 使用方式
 
 ### 方式 A：普通对话模式（推荐）

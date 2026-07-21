@@ -1,0 +1,19 @@
+{
+  "name": "devops-skill",
+  "private": true,
+  "version": "0.1.0",
+  "description": "devops-skill documentation site (docmd + Diátaxis)",
+  "type": "module",
+  "scripts": {
+    "docs:dev": "docmd dev",
+    "docs:build": "docmd build",
+    "docs:validate": "docmd validate",
+    "docs:doctor": "docmd doctor"
+  },
+  "devDependencies": {
+    "@docmd/core": "^0.8.17"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
