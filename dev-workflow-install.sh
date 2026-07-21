@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Dev Workflow Combined Installer (macOS / Linux)
-# Installs all dev-workflow related skills: github-cli-skill, gh-create-release, git-workflow, git-worktree, local-workflow, docmd
+# Installs all dev-workflow related skills: github-cli-skill, gh-create-release, git-workflow, git-worktree, git-pr, local-workflow, docmd
 #
 # Usage: ./dev-workflow-install.sh [--system | --project] [--agent <name>] [--hooks]
 #
@@ -35,6 +35,7 @@ SKILLS=(
     "gh-create-release"
     "git-workflow"
     "git-worktree"
+    "git-pr"
     "local-workflow"
     "docmd"
 )

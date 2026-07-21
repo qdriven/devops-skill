@@ -22,6 +22,7 @@ npm run docs:build    # 输出到 site/
 |-------|------|
 | **git-workflow** | 基于 GitHub CLI 的任务工作流（创建 Issue body 主记录 → 计划/执行/检查 → 更新并关闭 Issue） |
 | **git-worktree** | 用 git worktree 做隔离/并行开发；可与 git-workflow、local-workflow 组合 |
+| **git-pr** | 推送分支并创建/更新 GitHub PR（可选；可接在 git-workflow finish 之后） |
 | **local-workflow** | 本地任务工作流（无需 GitHub，本地追踪记录） |
 | **docmd** | 用捆绑的 Diátaxis 模版搭建 / 构建 docmd 文档站（本仓库文档站即活示例） |
 | **github-cli-skill** | 简化版 GitHub CLI 工具（仓库创建、Issue 管理） |

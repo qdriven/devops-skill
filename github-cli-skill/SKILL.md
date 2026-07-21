@@ -34,6 +34,7 @@ metadata:
 
 - 只需要 GitHub CLI 命令、Issue 查看/评论/关闭、仓库创建时使用本 Skill。
 - 需要“创建 Issue -> 执行任务 -> 关闭 Issue”的完整任务生命周期时，使用 `git-workflow`。
+- 需要推送分支并创建/更新 Pull Request 时，使用 `git-pr`。
 - 需要本地离线任务追踪时，使用 `local-workflow`。
 
 ## 前置要求
