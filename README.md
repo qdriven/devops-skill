@@ -2,7 +2,7 @@
 
 开发工作流相关的 AI Agent Skill 集合。
 
-源自我仓库 `fire-skills/skills/devops`，在本索引仓库中以独立 skillset 维护。
+源自我仓库 `fire-skills/skills/devops`，现已独立为 GitHub 仓库：[qdriven/devops-skill](https://github.com/qdriven/devops-skill)。
 
 ## 技能列表
 
