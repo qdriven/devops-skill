@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Dev Workflow Symlink Installer (macOS / Linux)
-# Installs all dev-workflow skills via symlinks: github-cli-skill, gh-create-release, git-workflow, git-worktree, local-workflow, scanning-for-secrets
+# Installs all dev-workflow skills via symlinks: github-cli-skill, gh-create-release, git-workflow, git-worktree, local-workflow, docmd, scanning-for-secrets
 #
 # Usage: ./dev-workflow-symlink-install.sh [--system | --project] [--agent <name>]
 #
@@ -34,6 +34,7 @@ SKILLS=(
     "git-workflow"
     "git-worktree"
     "local-workflow"
+    "docmd"
     "scanning-for-secrets"
 )
 

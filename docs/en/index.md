@@ -23,6 +23,7 @@ Switch language with **中文 / English** in the sidebar options menu.
 | `git-workflow` | GitHub CLI task workflow (Issue as record → plan/execute → close) |
 | `git-worktree` | Isolated/parallel development with git worktrees; pairs with the workflows above |
 | `local-workflow` | Local task workflow (no GitHub; local tracing) |
+| `docmd` | Scaffold/build a docs site from the bundled Diátaxis template (this site is the live example) |
 | `github-cli-skill` | Lightweight GitHub CLI helper (repos, issues) |
 | `gh-create-release` | Create GitHub Releases |
 | `scanning-for-secrets` | Secret scanning (token patterns + optional pre-commit hook) |

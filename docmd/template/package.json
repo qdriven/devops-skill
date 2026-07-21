@@ -1,0 +1,19 @@
+{
+  "name": "docmd-diataxis-template",
+  "private": true,
+  "version": "0.1.0",
+  "description": "docmd + Diátaxis documentation template",
+  "type": "module",
+  "scripts": {
+    "dev": "docmd dev",
+    "build": "docmd build",
+    "validate": "docmd validate",
+    "doctor": "docmd doctor"
+  },
+  "devDependencies": {
+    "@docmd/core": "^0.8.17"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

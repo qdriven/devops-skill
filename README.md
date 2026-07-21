@@ -6,6 +6,8 @@
 
 文档站点（docmd + Diátaxis，中文 / English）：源码在 [`docs/zh/`](./docs/zh/)、[`docs/en/`](./docs/en/)，构建后发布到 GitHub Pages：https://qdriven.github.io/devops-skill/
 
+本站按 [`docmd`](./docmd/SKILL.md) Skill 的模版约定搭建；可复制骨架在 [`docmd/template/`](./docmd/template/)。
+
 ```bash
 npm install
 npm run docs:dev      # 本地预览（侧栏可切换中英文）
@@ -21,6 +23,7 @@ npm run docs:build    # 输出到 site/
 | **git-workflow** | 基于 GitHub CLI 的任务工作流（创建 Issue body 主记录 → 计划/执行/检查 → 更新并关闭 Issue） |
 | **git-worktree** | 用 git worktree 做隔离/并行开发；可与 git-workflow、local-workflow 组合 |
 | **local-workflow** | 本地任务工作流（无需 GitHub，本地追踪记录） |
+| **docmd** | 用捆绑的 Diátaxis 模版搭建 / 构建 docmd 文档站（本仓库文档站即活示例） |
 | **github-cli-skill** | 简化版 GitHub CLI 工具（仓库创建、Issue 管理） |
 | **gh-create-release** | GitHub Release 创建工具 |
 | **scanning-for-secrets** | 代码安全扫描（9 种 Token 模式 + Pre-commit Hook） |
@@ -102,6 +105,7 @@ bash skillsets/devops-skill/dev-workflow-install.sh --project --hooks --agent cl
 | 任务需要 GitHub Issue 生命周期 | `git-workflow` |
 | 隔离目录 / 并行分支 / 不弄脏主工作区 | `git-worktree`（常与上面两个 workflow 组合） |
 | 本地/离线/无需 GitHub 的任务追踪 | `local-workflow` |
+| 用模版新建 / 构建 docmd 文档站 | `docmd` |
 | 只需要 GitHub CLI 命令速查 | `github-cli-skill` |
 | 创建 GitHub Release | `gh-create-release` |
 | commit/push 前查 secret | `scanning-for-secrets` |

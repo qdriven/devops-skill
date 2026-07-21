@@ -21,6 +21,7 @@
 | `git-workflow` | 基于 GitHub CLI 的任务工作流（Issue 作主记录 → 计划/执行 → 关闭） |
 | `git-worktree` | 用 git worktree 做隔离/并行开发；可与上述 workflow 组合 |
 | `local-workflow` | 本地任务工作流（无需 GitHub，本地追踪记录） |
+| `docmd` | 用捆绑 Diátaxis 模版搭建/构建文档站（本站即活示例） |
 | `github-cli-skill` | 简化版 GitHub CLI 工具（仓库、Issue） |
 | `gh-create-release` | 创建 GitHub Release |
 | `scanning-for-secrets` | 代码安全扫描（Token 模式 + 可选 pre-commit hook） |

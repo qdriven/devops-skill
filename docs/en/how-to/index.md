@@ -6,4 +6,5 @@
 - [How to run local-workflow](./run-local-workflow.md)
 - [How to develop with git worktree](./run-git-worktree.md)
 - [How to create a GitHub Release](./create-release.md)
+- [How to scaffold a docs site from the docmd template](./scaffold-docs.md)
 - [How to build and preview this docs site](./build-docs.md)

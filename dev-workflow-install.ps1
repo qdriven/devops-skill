@@ -5,7 +5,7 @@
     Installs all dev-workflow related skills.
 
 .DESCRIPTION
-    Installs: github-cli-skill, gh-create-release, git-workflow, git-worktree, local-workflow
+    Installs: github-cli-skill, gh-create-release, git-workflow, git-worktree, local-workflow, docmd
 
 .PARAMETER System
     Install to system directories
@@ -58,6 +58,7 @@ $Skills = @(
     "git-workflow"
     "git-worktree"
     "local-workflow"
+    "docmd"
 )
 
 function Write-ColorOutput {
