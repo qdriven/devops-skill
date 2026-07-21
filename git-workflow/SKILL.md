@@ -41,6 +41,32 @@ metadata:
 - 如果用户只是说“执行任务”但没有说明是否要 GitHub Issue，先判断仓库是否有 GitHub remote 和 `gh auth status`；条件不满足时不要强行创建 Issue。
 - 不要为纯命令查询触发本 Skill；只需要 `gh` 命令速查时使用 `github-cli`。
 - 需要隔离工作目录 / 并行分支 / 不弄脏主工作区时，配合 [git-worktree](../git-worktree/SKILL.md)：Issue 追踪仍由本 Skill 负责，检出与目录隔离交给 worktree。
+- 用户要求开 PR / 推送并创建 Pull Request 时，**不要**塞进本 Skill；改用可选的 [git-pr](../git-pr/SKILL.md)（可在 `finish` 之后衔接）。
+
+## Worktree 门禁（强制，非可选）
+
+在 `init` 之后、`IMPLEMENT` 之前，Agent **必须**评估是否启用 [git-worktree](../git-worktree/SKILL.md)。命中任一条件则 **必须**建 linked worktree，并在该目录内完成实现与 `finish`；禁止在脏主工作区直接改代码。
+
+| 条件 | 动作 |
+|------|------|
+| 用户明确要求 worktree / 隔离 / 并行分支 / 另开目录 | **必须** `git worktree add` |
+| 主工作区有未提交改动（`git status --porcelain` 非空） | **必须** `git worktree add` |
+| 需要与主线并行的 hotfix / 长任务，且不想 stash | **必须** `git worktree add` |
+| 主工作区干净，且用户未要求隔离 | 可在主工作区直接实现 |
+
+标准命令（Issue 编号为 `N`）：
+
+```bash
+REPO_NAME="$(basename "$(git rev-parse --show-toplevel)")"
+git worktree add -b "${N}-short-slug" "../${REPO_NAME}-wt-${N}" main
+# 将 .git-workflow.state.json（及所需未追踪输入文件）复制到 worktree 根
+cd "../${REPO_NAME}-wt-${N}"
+# … 在此目录 IMPLEMENT / finish …
+# 任务结束后回到主仓：
+# git worktree remove "../${REPO_NAME}-wt-${N}"
+```
+
+`finish` / `abort` 完成后若曾创建 worktree，再执行 `git worktree remove`（勿只 `rm -rf`）。
 
 ## 推荐控制方式：No-Hook
 
@@ -48,7 +74,7 @@ metadata:
 
 1. 用户提出需要 GitHub Issue 追踪的任务。
 2. Agent 根据本 Skill 触发，主动运行 `orchestrate.py init`。
-3. Agent 执行计划、实现、测试。
+3. Agent 按 **Worktree 门禁**决定是否隔离，再执行计划、实现、测试。
 4. Agent 主动运行 `orchestrate.py finish` 写回 Issue body 并关闭 Issue。
 
 Hook 只作为可选增强：Claude Code 的 `UserPromptSubmit` hook 可提醒使用本 Skill；Git hooks 只在 commit 时追加 `Refs` 或事件日志；Kimi hooks 只在支持该 hook 系统的环境中自动创建或补充记录。没有安装 hook 时，本 Skill 仍然可完整运行。
@@ -60,11 +86,21 @@ flowchart TD
     BEGIN([BEGIN]) --> INIT[运行 orchestrate.py init 创建 Issue]
     INIT --> BODY[Issue body 初始化任务记录]
     BODY --> PLAN[Agent 轻量分析与计划]
-    PLAN --> IMPLEMENT[Agent 执行任务并测试]
+    PLAN --> WT{Worktree 门禁?}
+    WT -->|脏工作区或用户要求隔离| ADD[worktree add -b issue-slug]
+    WT -->|干净且无隔离需求| IMPLEMENT[Agent 执行任务并测试]
+    ADD --> CD[cd 到 worktree 并复制状态文件]
+    CD --> IMPLEMENT
     IMPLEMENT --> FINISH[运行 orchestrate.py finish]
     FINISH --> UPDATE[写入扩展问题/计划/执行/结果]
     UPDATE --> CLOSE[关闭 Issue]
-    CLOSE --> END([END])
+    CLOSE --> RM{曾用 worktree?}
+    RM -->|是| REMOVE[git worktree remove]
+    RM -->|否| PRQ{用户要开 PR?}
+    REMOVE --> PRQ
+    PRQ -->|是| GPR[可选 git-pr]
+    PRQ -->|否| END([END])
+    GPR --> END
 ```
 
 ### 步骤说明
@@ -78,17 +114,24 @@ flowchart TD
 2. **PLAN** — Agent 轻量分析
    - 小任务也需要短计划：明确问题、假设、验收标准、最小实现步骤
    - 如果存在用户未说明但会影响实现的点，写入 `Agent Expansion`
+   - 评估 **Worktree 门禁**；命中则下一步先建 worktree，再实现
 
-3. **IMPLEMENT** — Agent 执行任务
-   - 根据任务描述执行代码修改
+3. **WORKTREE**（门禁命中时必做）— 按 [git-worktree](../git-worktree/SKILL.md) 建 linked worktree
+   - 分支名建议 `{issue}-{slug}`（便于 prepare-commit-msg 追加 `Refs`）
+   - 复制 `.git-workflow.state.json` 到 worktree 根；后续命令的 cwd 保持在 worktree
+   - 主仓未追踪但任务需要的输入文件一并复制进 worktree
+
+4. **IMPLEMENT** — Agent 执行任务
+   - 根据任务描述执行代码修改（门禁命中时 **仅**在 worktree 内修改）
    - 运行测试并修复问题
-   - **可选隔离**：主工作区有未提交改动、或用户要求并行/隔离开发时，先按 [git-worktree](../git-worktree/SKILL.md) 建 linked worktree（分支名建议 `{issue}-{slug}`），在 worktree 目录内实现与提交；完成后 `git worktree remove`
 
-4. **FINISH** — 更新 Issue body 并关闭 Issue
+5. **FINISH** — 更新 Issue body 并关闭 Issue
    - 运行：`python3 .agents/skills/git-workflow/scripts/orchestrate.py finish --message "完成总结"`
    - 可附加 `--agent-expansion`、`--plan`、`--execution`，把 Agent 扩展问题、计划和执行过程写入 Issue body
    - 关闭 Issue
    - 清理状态文件
+   - 若曾创建 worktree：回到主仓执行 `git worktree remove`
+   - 若用户要求开 PR：接着走 [git-pr](../git-pr/SKILL.md)（push + `gh pr create`）；**默认不开 PR**
 
 ## Issue Body 主记录
 
@@ -291,4 +334,5 @@ Hook 会检测任务执行相关的 prompt（如"执行任务"、"execute task"�
 | [references/workflow.md](references/workflow.md) | 工作流详细参考 |
 | [references/simple-workflow-runtime.md](references/simple-workflow-runtime.md) | 参考 Yorun 的最小 workflow skill set 方案 |
 | [git-worktree](../git-worktree/SKILL.md) | 用 worktree 隔离实现目录与分支 |
+| [git-pr](../git-pr/SKILL.md) | 可选：push 分支并创建/更新 Pull Request |
 | [github-cli-skill](../github-cli-skill/SKILL.md) | `gh` 命令助手 |
