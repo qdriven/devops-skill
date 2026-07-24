@@ -1,0 +1,7 @@
+{
+  "pr": 2,
+  "url": "https://github.com/qdriven/devops-skill/pull/2",
+  "branch": "fix/gha-node24-actions",
+  "base": "main",
+  "merged": true
+}

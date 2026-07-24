@@ -4,3 +4,5 @@ site/
 *.log
 .task-output.md
 .git-workflow.state.json
+git-workflow/scripts/__pycache__/
+_pycache__/
